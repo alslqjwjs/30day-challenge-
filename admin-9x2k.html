@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>관리자 대시보드</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-font-smoothing: antialiased; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #f6f6f6;
+      color: #111;
+      font-size: 14px;
+      word-break: keep-all;
+    }
+
+    /* LOGIN */
+    .login-wrap {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #111;
+    }
+    .login-box {
+      background: #1a1a1a;
+      border: 1px solid #222;
+      border-radius: 14px;
+      padding: 48px 40px;
+      width: 360px;
+      text-align: center;
+    }
+    .login-box h1 {
+      font-size: 20px;
+      font-weight: 800;
+      color: white;
+      letter-spacing: -0.03em;
+      margin-bottom: 8px;
+    }
+    .login-box p { font-size: 13px; color: #555; margin-bottom: 32px; }
+    .login-box input {
+      width: 100%;
+      background: #0d0d0d;
+      border: 1.5px solid #222;
+      border-radius: 7px;
+      padding: 13px 15px;
+      font-size: 14px;
+      color: white;
+      font-family: inherit;
+      outline: none;
+      margin-bottom: 12px;
+      transition: border-color 0.15s;
+    }
+    .login-box input:focus { border-color: #2727e6; }
+    .login-btn {
+      width: 100%;
+      background: white;
+      color: #111;
+      border: none;
+      padding: 13px;
+      border-radius: 7px;
+      font-size: 14px;
+      font-weight: 800;
+      cursor: pointer;
+      font-family: inherit;
+      letter-spacing: -0.02em;
+      transition: opacity 0.15s;
+    }
+    .login-btn:hover { opacity: 0.8; }
+    .login-error {
+      margin-top: 12px;
+      font-size: 13px;
+      color: #ff4444;
+      display: none;
+    }
+
+    /* DASHBOARD */
+    .dashboard { display: none; }
+
+    header {
+      background: white;
+      border-bottom: 1px solid #e5e5e5;
+      padding: 0 32px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .header-logo {
+      font-weight: 800;
+      font-size: 14px;
+      letter-spacing: -0.02em;
+    }
+    .header-logo span { color: #2727e6; }
+    .logout-btn {
+      background: none;
+      border: 1.5px solid #e5e5e5;
+      border-radius: 6px;
+      padding: 7px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      color: #666;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .logout-btn:hover { border-color: #111; color: #111; }
+
+    .main { max-width: 1100px; margin: 0 auto; padding: 40px 32px; }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1px;
+      background: #e5e5e5;
+      border: 1px solid #e5e5e5;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 32px;
+    }
+    .stat-box {
+      background: white;
+      padding: 24px 28px;
+    }
+    .stat-box .num {
+      font-size: 36px;
+      font-weight: 900;
+      letter-spacing: -0.04em;
+      color: #111;
+      line-height: 1;
+      margin-bottom: 6px;
+    }
+    .stat-box .num.blue { color: #2727e6; }
+    .stat-box .label { font-size: 12px; color: #888; font-weight: 500; }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+    .section-header h2 {
+      font-size: 16px;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+    .refresh-btn {
+      background: none;
+      border: 1.5px solid #e5e5e5;
+      border-radius: 6px;
+      padding: 7px 14px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      color: #666;
+      transition: border-color 0.15s;
+    }
+    .refresh-btn:hover { border-color: #111; color: #111; }
+
+    .table-wrap {
+      background: white;
+      border: 1px solid #e5e5e5;
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    thead tr { background: #f6f6f6; border-bottom: 1px solid #e5e5e5; }
+    th {
+      padding: 12px 16px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 700;
+      color: #888;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    tbody tr {
+      border-bottom: 1px solid #f0f0f0;
+      transition: background 0.1s;
+    }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: #fafafa; }
+    td {
+      padding: 14px 16px;
+      font-size: 13px;
+      color: #333;
+      vertical-align: top;
+    }
+    .td-name { font-weight: 700; color: #111; }
+    .td-situation {
+      max-width: 200px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: #666;
+    }
+    .td-date { color: #999; font-size: 12px; white-space: nowrap; }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 10px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 700;
+      cursor: pointer;
+      border: none;
+      font-family: inherit;
+      transition: opacity 0.15s;
+      white-space: nowrap;
+    }
+    .badge:hover { opacity: 0.75; }
+    .badge-pending { background: #fff8e1; color: #f59e0b; }
+    .badge-completed { background: #e8f5e9; color: #16ab59; }
+
+    .detail-btn {
+      background: none;
+      border: 1.5px solid #e5e5e5;
+      border-radius: 5px;
+      padding: 5px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      color: #666;
+      transition: border-color 0.15s;
+    }
+    .detail-btn:hover { border-color: #2727e6; color: #2727e6; }
+
+    .empty {
+      text-align: center;
+      padding: 60px 20px;
+      color: #aaa;
+      font-size: 14px;
+    }
+    .loading {
+      text-align: center;
+      padding: 60px 20px;
+      color: #aaa;
+      font-size: 14px;
+    }
+
+    /* MODAL */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal {
+      background: white;
+      border-radius: 14px;
+      padding: 40px;
+      max-width: 520px;
+      width: 100%;
+      position: relative;
+    }
+    .modal-close {
+      position: absolute;
+      top: 16px;
+      right: 16px;
+      background: none;
+      border: none;
+      font-size: 20px;
+      cursor: pointer;
+      color: #aaa;
+      line-height: 1;
+    }
+    .modal-close:hover { color: #111; }
+    .modal h3 {
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+      margin-bottom: 24px;
+    }
+    .modal-row {
+      margin-bottom: 16px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid #f0f0f0;
+    }
+    .modal-row:last-of-type { border-bottom: none; margin-bottom: 0; }
+    .modal-row .label {
+      font-size: 11px;
+      font-weight: 700;
+      color: #aaa;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      margin-bottom: 4px;
+    }
+    .modal-row .value { font-size: 14px; color: #111; line-height: 1.6; }
+
+    @media (max-width: 700px) {
+      .main { padding: 24px 16px; }
+      .stats-row { grid-template-columns: 1fr; }
+      header { padding: 0 16px; }
+      th:nth-child(3), td:nth-child(3),
+      th:nth-child(4), td:nth-child(4) { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-wrap" id="login-wrap">
+  <div class="login-box">
+    <h1>관리자 로그인</h1>
+    <p>30일 런칭 챌린지 대시보드</p>
+    <input type="password" id="pw-input" placeholder="비밀번호" onkeydown="if(event.key==='Enter') login()">
+    <button class="login-btn" onclick="login()">로그인</button>
+    <div class="login-error" id="login-error">비밀번호가 올바르지 않습니다.</div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div class="dashboard" id="dashboard">
+  <header>
+    <div class="header-logo">30일 챌린지 <span>관리자</span></div>
+    <button class="logout-btn" onclick="logout()">로그아웃</button>
+  </header>
+  <div class="main">
+    <div class="stats-row" id="stats-row">
+      <div class="stat-box">
+        <div class="num" id="stat-total">-</div>
+        <div class="label">전체 신청</div>
+      </div>
+      <div class="stat-box">
+        <div class="num blue" id="stat-pending">-</div>
+        <div class="label">대기 중</div>
+      </div>
+      <div class="stat-box">
+        <div class="num" id="stat-today">-</div>
+        <div class="label">오늘 신청</div>
+      </div>
+    </div>
+
+    <div class="section-header">
+      <h2>상담 신청 내역</h2>
+      <button class="refresh-btn" onclick="loadData()">새로고침</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>이름</th>
+            <th>연락처</th>
+            <th>이메일</th>
+            <th>접수일시</th>
+            <th>상태</th>
+            <th>상세</th>
+          </tr>
+        </thead>
+        <tbody id="table-body">
+          <tr><td colspan="6" class="loading">불러오는 중...</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modal-overlay" onclick="closeModal(event)">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal()">✕</button>
+    <h3 id="modal-name"></h3>
+    <div class="modal-row">
+      <div class="label">연락처</div>
+      <div class="value" id="modal-phone"></div>
+    </div>
+    <div class="modal-row">
+      <div class="label">이메일</div>
+      <div class="value" id="modal-email"></div>
+    </div>
+    <div class="modal-row">
+      <div class="label">현재 상황</div>
+      <div class="value" id="modal-situation"></div>
+    </div>
+    <div class="modal-row">
+      <div class="label">접수 시간</div>
+      <div class="value" id="modal-date"></div>
+    </div>
+    <div class="modal-row">
+      <div class="label">처리 상태</div>
+      <div class="value" id="modal-status"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const { createClient } = supabase;
+  const _supabase = createClient(
+    'https://bognoprmrmgdjxbcvoik.supabase.co',
+    'sb_publishable_fuNUs7taaNLSoDQnnksaQw_QwtS0iwB'
+  );
+
+  const ADMIN_PW = 'alslqjwjs1!';
+
+  function login() {
+    const val = document.getElementById('pw-input').value;
+    if (val === ADMIN_PW) {
+      sessionStorage.setItem('admin_auth', '1');
+      showDashboard();
+    } else {
+      document.getElementById('login-error').style.display = 'block';
+      document.getElementById('pw-input').value = '';
+      document.getElementById('pw-input').focus();
+    }
+  }
+
+  function logout() {
+    sessionStorage.removeItem('admin_auth');
+    document.getElementById('dashboard').style.display = 'none';
+    document.getElementById('login-wrap').style.display = 'flex';
+    document.getElementById('pw-input').value = '';
+  }
+
+  function showDashboard() {
+    document.getElementById('login-wrap').style.display = 'none';
+    document.getElementById('dashboard').style.display = 'block';
+    loadData();
+  }
+
+  async function loadData() {
+    document.getElementById('table-body').innerHTML =
+      '<tr><td colspan="6" class="loading">불러오는 중...</td></tr>';
+
+    const { data, error } = await _supabase
+      .from('consultations')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      document.getElementById('table-body').innerHTML =
+        '<tr><td colspan="6" class="empty">데이터를 불러오지 못했습니다.</td></tr>';
+      return;
+    }
+
+    updateStats(data);
+    renderTable(data);
+  }
+
+  function updateStats(data) {
+    const today = new Date().toISOString().slice(0, 10);
+    const todayCount = data.filter(r => r.created_at.slice(0, 10) === today).length;
+    const pendingCount = data.filter(r => r.status === 'pending').length;
+    document.getElementById('stat-total').textContent = data.length;
+    document.getElementById('stat-pending').textContent = pendingCount;
+    document.getElementById('stat-today').textContent = todayCount;
+  }
+
+  function renderTable(data) {
+    const tbody = document.getElementById('table-body');
+    if (!data.length) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty">신청 내역이 없습니다.</td></tr>';
+      return;
+    }
+    tbody.innerHTML = data.map(r => `
+      <tr>
+        <td class="td-name">${esc(r.name)}</td>
+        <td>${esc(r.phone || '-')}</td>
+        <td>${esc(r.email)}</td>
+        <td class="td-date">${formatDate(r.created_at)}</td>
+        <td>
+          <button class="badge badge-${r.status}" onclick="toggleStatus('${r.id}', '${r.status}', this)">
+            ${r.status === 'pending' ? '⏳ 대기중' : '✅ 완료'}
+          </button>
+        </td>
+        <td>
+          <button class="detail-btn" onclick='openModal(${JSON.stringify(r)})'>상세보기</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  async function toggleStatus(id, current, btn) {
+    const next = current === 'pending' ? 'completed' : 'pending';
+    btn.disabled = true;
+    const { error } = await _supabase
+      .from('consultations')
+      .update({ status: next })
+      .eq('id', id);
+    if (!error) {
+      btn.className = `badge badge-${next}`;
+      btn.textContent = next === 'pending' ? '⏳ 대기중' : '✅ 완료';
+      btn.onclick = () => toggleStatus(id, next, btn);
+      loadData();
+    }
+    btn.disabled = false;
+  }
+
+  function openModal(r) {
+    document.getElementById('modal-name').textContent = r.name;
+    document.getElementById('modal-phone').textContent = r.phone || '-';
+    document.getElementById('modal-email').textContent = r.email;
+    document.getElementById('modal-situation').textContent = r.situation || '-';
+    document.getElementById('modal-date').textContent = formatDate(r.created_at);
+    document.getElementById('modal-status').textContent =
+      r.status === 'pending' ? '⏳ 대기중' : '✅ 완료';
+    document.getElementById('modal-overlay').classList.add('open');
+  }
+
+  function closeModal(e) {
+    if (!e || e.target === document.getElementById('modal-overlay') || e.type === 'click') {
+      document.getElementById('modal-overlay').classList.remove('open');
+    }
+  }
+
+  function formatDate(iso) {
+    const d = new Date(iso);
+    return d.toLocaleString('ko-KR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+  }
+
+  function esc(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // 자동 로그인 확인
+  if (sessionStorage.getItem('admin_auth') === '1') showDashboard();
+</script>
+</body>
+</html>
