@@ -223,18 +223,18 @@
     .badge-completed { background: #e8f5e9; color: #16ab59; }
 
     .detail-btn {
-      background: none;
-      border: 1.5px solid #e5e5e5;
+      background: #2727e6;
+      border: none;
       border-radius: 5px;
-      padding: 5px 10px;
+      padding: 5px 12px;
       font-size: 11px;
-      font-weight: 600;
+      font-weight: 700;
       cursor: pointer;
       font-family: inherit;
-      color: #666;
-      transition: border-color 0.15s;
+      color: white;
+      transition: opacity 0.15s;
     }
-    .detail-btn:hover { border-color: #2727e6; color: #2727e6; }
+    .detail-btn:hover { opacity: 0.75; }
 
     .empty {
       text-align: center;
@@ -394,7 +394,10 @@
     </div>
     <div class="modal-row">
       <div class="label">처리 상태</div>
-      <div class="value" id="modal-status"></div>
+      <div class="value" style="display:flex; align-items:center; gap:12px;">
+        <span id="modal-status"></span>
+        <button id="modal-toggle-btn" class="badge" onclick="modalToggleStatus()" style="cursor:pointer;"></button>
+      </div>
     </div>
   </div>
 </div>
@@ -474,12 +477,12 @@
         <td>${esc(r.email)}</td>
         <td class="td-date">${formatDate(r.created_at)}</td>
         <td>
-          <button class="badge badge-${r.status}" onclick="toggleStatus('${r.id}', '${r.status}', this)">
+          <span class="badge badge-${r.status}" style="cursor:default;">
             ${r.status === 'pending' ? '⏳ 대기중' : '✅ 완료'}
-          </button>
+          </span>
         </td>
         <td>
-          <button class="detail-btn" onclick='openModal(${JSON.stringify(r)})'>상세보기</button>
+          <button class="detail-btn" onclick='openModal(${JSON.stringify(r)})'>보기</button>
         </td>
       </tr>
     `).join('');
@@ -501,15 +504,49 @@
     btn.disabled = false;
   }
 
+  let _modalId = null;
+  let _modalStatus = null;
+
   function openModal(r) {
+    _modalId = r.id;
+    _modalStatus = r.status;
     document.getElementById('modal-name').textContent = r.name;
     document.getElementById('modal-phone').textContent = r.phone || '-';
     document.getElementById('modal-email').textContent = r.email;
     document.getElementById('modal-situation').textContent = r.situation || '-';
     document.getElementById('modal-date').textContent = formatDate(r.created_at);
-    document.getElementById('modal-status').textContent =
-      r.status === 'pending' ? '⏳ 대기중' : '✅ 완료';
+    updateModalStatus(r.status);
     document.getElementById('modal-overlay').classList.add('open');
+  }
+
+  function updateModalStatus(status) {
+    _modalStatus = status;
+    document.getElementById('modal-status').textContent =
+      status === 'pending' ? '⏳ 대기중' : '✅ 완료';
+    const btn = document.getElementById('modal-toggle-btn');
+    if (status === 'pending') {
+      btn.textContent = '→ 완료로 변경';
+      btn.className = 'badge badge-completed';
+    } else {
+      btn.textContent = '→ 대기중으로 변경';
+      btn.className = 'badge badge-pending';
+    }
+  }
+
+  async function modalToggleStatus() {
+    const next = _modalStatus === 'pending' ? 'completed' : 'pending';
+    const btn = document.getElementById('modal-toggle-btn');
+    btn.disabled = true;
+    btn.textContent = '변경 중...';
+    const { error } = await _supabase
+      .from('consultations')
+      .update({ status: next })
+      .eq('id', _modalId);
+    if (!error) {
+      updateModalStatus(next);
+      loadData();
+    }
+    btn.disabled = false;
   }
 
   function closeModal(e) {
